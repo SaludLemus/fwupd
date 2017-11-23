@@ -49,6 +49,8 @@ typedef struct {
 	FuDevice		*device;
 	FuDevice		*device_old;
 	FuDeviceList		*self;		/* no ref */
+	GMainLoop		*replug_loop;	/* block waiting for replug */
+	guint			 replug_id;	/* timeout the loop */
 	guint			 remove_id;
 } FuDeviceItem;
 
@@ -364,6 +366,68 @@ fu_device_list_add_missing_guids (FuDevice *device_new, FuDevice *device_old)
 	}
 }
 
+static void
+fu_device_list_replace (FuDeviceList *self, FuDeviceItem *item, FuDevice *device)
+{
+	/* clear timeout if scheduled */
+	if (item->remove_id != 0) {
+		g_source_remove (item->remove_id);
+		item->remove_id = 0;
+	}
+
+	/* device was actually changed */
+	if (device != item->device) {
+
+		/* copy over any GUIDs that used to exist */
+		fu_device_list_add_missing_guids (device, item->device);
+
+		/* enforce the vendor ID if specified */
+		if (fu_device_get_vendor_id (item->device) != NULL &&
+		    fu_device_get_vendor_id (device) == NULL) {
+			const gchar *vendor_id = fu_device_get_vendor_id (item->device);
+			g_debug ("copying old vendor ID %s to new device", vendor_id);
+			fu_device_set_vendor_id (device, vendor_id);
+		}
+
+		/* copy over the version strings if not set */
+		if (fu_device_get_version (item->device) != NULL &&
+		    fu_device_get_version (device) == NULL) {
+			const gchar *version = fu_device_get_version (item->device);
+			g_debug ("copying old version %s to new device", version);
+			fu_device_set_version (device, version);
+		}
+
+		/* always use the runtime version */
+		if (fu_device_has_flag (item->device, FWUPD_DEVICE_FLAG_USE_RUNTIME_VERSION) &&
+		    fu_device_has_flag (item->device, FWUPD_DEVICE_FLAG_NEEDS_BOOTLOADER)) {
+			const gchar *version = fu_device_get_version (item->device);
+			g_debug ("forcing runtime version %s to new device", version);
+			fu_device_set_version (device, version);
+		}
+
+		/* this is no longer true */
+		if (item->device_old != NULL) {
+			fu_device_remove_flag (item->device_old,
+					       FWUPD_DEVICE_FLAG_WAIT_FOR_REPLUG_USER);
+			fu_device_remove_flag (item->device_old,
+					       FWUPD_DEVICE_FLAG_WAIT_FOR_REPLUG_AUTO);
+		}
+
+		/* assign the new device */
+		g_set_object (&item->device_old, item->device);
+		g_set_object (&item->device, device);
+	}
+
+	/* emit signal */
+	fu_device_list_emit_device_changed (self, device);
+
+	/* we were waiting for this... */
+	if (g_main_loop_is_running (item->replug_loop)) {
+		g_debug ("quitting replug loop");
+		g_main_loop_quit (item->replug_loop);
+	}
+}
+
 /**
  * fu_device_list_add:
  * @self: A #FuDeviceList
@@ -399,15 +463,31 @@ fu_device_list_add (FuDeviceList *self, FuDevice *device)
 	if (item != NULL && item->remove_id != 0) {
 		g_debug ("found existing device %s, reusing item",
 			 fu_device_get_id (item->device));
-		if (item->remove_id != 0) {
-			g_source_remove (item->remove_id);
-			item->remove_id = 0;
-		}
-		fu_device_list_emit_device_changed (self, device);
+		fu_device_list_replace (self, item, device);
 		return;
 	}
 
+	/* only search using the platform_id when the device is waiting to
+	 * re-enumerate itself -- otherwise we might match incompatible
+	 * devices if the user replugs different hardware in the same port */
+	for (guint i = 0; i < self->devices->len; i++) {
+		item = g_ptr_array_index (self->devices, i);
+		if (g_strcmp0 (fu_device_get_platform_id (item->device),
+			       fu_device_get_platform_id (device)) != 0)
+			continue;
+		if (fu_device_has_flag (item->device, FWUPD_DEVICE_FLAG_WAIT_FOR_REPLUG_AUTO)) {
+			g_debug ("found device with same platform-id %s, reusing item "
+				 "from plugin %s for plugin %s",
+				 fu_device_get_id (item->device),
+				 fu_device_get_plugin (item->device),
+				 fu_device_get_plugin (device));
+			fu_device_list_replace (self, item, device);
+			return;
+		}
+	}
+
 	/* verify the device does not already exist */
+	item = fu_device_list_find_by_id (self, fu_device_get_id (device), NULL);
 	if (item != NULL) {
 		g_debug ("device %s already exists, ignoring",
 			 fu_device_get_id (item->device));
@@ -422,42 +502,7 @@ fu_device_list_add (FuDeviceList *self, FuDevice *device)
 			 fu_device_get_id (item->device),
 			 fu_device_get_plugin (item->device),
 			 fu_device_get_plugin (device));
-
-		/* do not remove this device */
-		g_source_remove (item->remove_id);
-		item->remove_id = 0;
-
-		/* copy over any GUIDs that used to exist */
-		fu_device_list_add_missing_guids (device, item->device);
-
-		/* enforce the vendor ID if specified */
-		if (fu_device_get_vendor_id (item->device) != NULL &&
-		    fu_device_get_vendor_id (device) == NULL) {
-			const gchar *vendor_id = fu_device_get_vendor_id (item->device);
-			g_debug ("copying old vendor ID %s to new device", vendor_id);
-			fu_device_set_vendor_id (device, vendor_id);
-		}
-
-		/* copy over the version strings if not set */
-		if (fu_device_get_version (item->device) != NULL &&
-		    fu_device_get_version (device) == NULL) {
-			const gchar *version = fu_device_get_version (item->device);
-			g_debug ("copying old version %s to new device", version);
-			fu_device_set_version (device, version);
-		}
-
-		/* always use the runtime version */
-		if (fu_device_has_flag (item->device, FWUPD_DEVICE_FLAG_USE_RUNTIME_VERSION) &&
-		    fu_device_has_flag (item->device, FWUPD_DEVICE_FLAG_NEEDS_BOOTLOADER)) {
-			const gchar *version = fu_device_get_version (item->device);
-			g_debug ("forcing runtime version %s to new device", version);
-			fu_device_set_version (device, version);
-		}
-
-		/* assign the new device */
-		g_set_object (&item->device_old, item->device);
-		g_set_object (&item->device, device);
-		fu_device_list_emit_device_changed (self, device);
+		fu_device_list_replace (self, item, device);
 		return;
 	}
 
@@ -492,6 +537,7 @@ fu_device_list_add (FuDeviceList *self, FuDevice *device)
 	item = g_new0 (FuDeviceItem, 1);
 	item->self = self; /* no ref */
 	item->device = g_object_ref (device);
+	item->replug_loop = g_main_loop_new (NULL, FALSE);
 	g_ptr_array_add (self->devices, item);
 	fu_device_list_emit_device_added (self, device);
 }
@@ -524,6 +570,87 @@ fu_device_list_get_by_guid (FuDeviceList *self, const gchar *guid, GError **erro
 		     "GUID %s was not found",
 		     guid);
 	return NULL;
+}
+
+static gboolean
+fu_device_list_replug_cb (gpointer user_data)
+{
+	FuDeviceItem *item = (FuDeviceItem *) user_data;
+
+	/* no longer valid */
+	item->replug_id = 0;
+
+	/* quit loop */
+	g_debug ("device did not replug");
+	g_main_loop_quit (item->replug_loop);
+	return FALSE;
+}
+
+/**
+ * fu_device_list_wait_for_replug:
+ * @self: A #FuDeviceList
+ * @guid: A device GUID
+ * @error: A #GError, or %NULL
+ *
+ * Waits for a specific devic to replug if %FWUPD_DEVICE_FLAG_WAIT_FOR_REPLUG_USER
+ * of %FWUPD_DEVICE_FLAG_WAIT_FOR_REPLUG_AUTO is set.
+ * If the device does not exist this function returns without an error.
+ *
+ * Returns: %TRUE for success
+ *
+ * Since: 1.1.2
+ **/
+gboolean
+fu_device_list_wait_for_replug (FuDeviceList *self, FuDevice *device, GError **error)
+{
+	FuDeviceItem *item;
+
+	g_return_val_if_fail (FU_IS_DEVICE_LIST (self), FALSE);
+	g_return_val_if_fail (FU_IS_DEVICE (device), FALSE);
+	g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+	/* not found */
+	item = fu_device_list_find_by_device (self, device);
+	if (item == NULL)
+		return TRUE;
+
+	/* not required, or possibly literally just happened */
+	if (fu_device_has_flag (item->device, FWUPD_DEVICE_FLAG_WAIT_FOR_REPLUG_USER)) {
+		if (fu_device_get_remove_delay (item->device) == 0) {
+			fu_device_set_remove_delay (item->device,
+						    FU_DEVICE_REMOVE_DELAY_USER_REPLUG);
+		}
+	} else if (fu_device_has_flag (item->device, FWUPD_DEVICE_FLAG_WAIT_FOR_REPLUG_AUTO)) {
+		if (fu_device_get_remove_delay (item->device) == 0) {
+			fu_device_set_remove_delay (item->device,
+						    FU_DEVICE_REMOVE_DELAY_RE_ENUMERATE);
+		}
+	} else {
+		g_debug ("no replug or re-enumerate required");
+		return TRUE;
+	}
+
+	/* time to unplug and then re-plug */
+	g_debug ("waiting %ums for replug", fu_device_get_remove_delay (item->device));
+	item->replug_id = g_timeout_add (fu_device_get_remove_delay (item->device),
+					 fu_device_list_replug_cb, item);
+	g_main_loop_run (item->replug_loop);
+
+	/* the loop was quit without the timer */
+	if (item->replug_id != 0) {
+		g_debug ("waited for replug");
+		g_source_remove (item->replug_id);
+		item->replug_id = 0;
+		return TRUE;
+	}
+
+	/* device was not added back to the device list */
+	g_set_error (error,
+		     FWUPD_ERROR,
+		     FWUPD_ERROR_NOT_FOUND,
+		     "device %s did not come back",
+		     fu_device_get_id (device));
+	return FALSE;
 }
 
 /**
@@ -579,8 +706,11 @@ fu_device_list_item_free (FuDeviceItem *item)
 {
 	if (item->remove_id != 0)
 		g_source_remove (item->remove_id);
+	if (item->replug_id != 0)
+		g_source_remove (item->replug_id);
 	if (item->device_old != NULL)
 		g_object_unref (item->device_old);
+	g_main_loop_unref (item->replug_loop);
 	g_object_unref (item->device);
 	g_free (item);
 }

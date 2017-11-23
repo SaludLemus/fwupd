@@ -145,6 +145,10 @@ fwupd_device_flag_to_string (FwupdDeviceFlags device_flag)
 		return "install-parent-first";
 	if (device_flag == FWUPD_DEVICE_FLAG_IS_BOOTLOADER)
 		return "is-bootloader";
+	if (device_flag == FWUPD_DEVICE_FLAG_WAIT_FOR_REPLUG_USER)
+		return "wait-for-replug-user";
+	if (device_flag == FWUPD_DEVICE_FLAG_WAIT_FOR_REPLUG_AUTO)
+		return "wait-for-replug-auto";
 	if (device_flag == FWUPD_DEVICE_FLAG_UNKNOWN)
 		return "unknown";
 	return NULL;
@@ -195,6 +199,10 @@ fwupd_device_flag_from_string (const gchar *device_flag)
 		return FWUPD_DEVICE_FLAG_INSTALL_PARENT_FIRST;
 	if (g_strcmp0 (device_flag, "is-bootloader") == 0)
 		return FWUPD_DEVICE_FLAG_IS_BOOTLOADER;
+	if (g_strcmp0 (device_flag, "wait-for-replug-user") == 0)
+		return FWUPD_DEVICE_FLAG_WAIT_FOR_REPLUG_USER;
+	if (g_strcmp0 (device_flag, "wait-for-replug-auto") == 0)
+		return FWUPD_DEVICE_FLAG_WAIT_FOR_REPLUG_AUTO;
 	return FWUPD_DEVICE_FLAG_UNKNOWN;
 }
 

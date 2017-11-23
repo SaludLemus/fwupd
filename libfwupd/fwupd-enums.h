@@ -78,6 +78,8 @@ typedef enum {
  * @FWUPD_DEVICE_FLAG_USE_RUNTIME_VERSION:	Always use the runtime version rather than the bootloader
  * @FWUPD_DEVICE_FLAG_INSTALL_PARENT_FIRST:	Install composite firmware on the parent before the child
  * @FWUPD_DEVICE_FLAG_IS_BOOTLOADER:		Is currently in bootloader mode
+ * @FWUPD_DEVICE_FLAG_WAIT_FOR_REPLUG_USER:	The hardware is waiting for the user to reconnect the device
+ * @FWUPD_DEVICE_FLAG_WAIT_FOR_REPLUG_AUTO:	The hardware is waiting to automaticlaly re-enumerate
  *
  * The device flags.
  **/
@@ -96,6 +98,8 @@ typedef enum {
 #define FWUPD_DEVICE_FLAG_USE_RUNTIME_VERSION	(1u << 11)	/* Since: 1.0.6 */
 #define FWUPD_DEVICE_FLAG_INSTALL_PARENT_FIRST	(1u << 12)	/* Since: 1.0.8 */
 #define FWUPD_DEVICE_FLAG_IS_BOOTLOADER		(1u << 13)	/* Since: 1.0.8 */
+#define FWUPD_DEVICE_FLAG_WAIT_FOR_REPLUG_USER	(1u << 14)	/* Since: 1.1.2 */
+#define FWUPD_DEVICE_FLAG_WAIT_FOR_REPLUG_AUTO	(1u << 15)	/* Since: 1.1.2 */
 #define FWUPD_DEVICE_FLAG_UNKNOWN		G_MAXUINT64	/* Since: 0.7.3 */
 typedef guint64 FwupdDeviceFlags;
 

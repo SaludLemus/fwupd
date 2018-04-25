@@ -41,3 +41,7 @@ endif
 if get_option('plugin_uefi')
 subdir('uefi')
 endif
+
+if get_option('plugin_qmi')
+subdir('qmi')
+endif

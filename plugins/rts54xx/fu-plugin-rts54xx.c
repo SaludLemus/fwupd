@@ -1,0 +1,62 @@
+/*
+ * Copyright (C) 2018 Richard Hughes <richard@hughsie.com>
+ *
+ * SPDX-License-Identifier: LGPL-2.1+
+ */
+
+#include "config.h"
+
+#include "fu-plugin.h"
+#include "fu-plugin-vfuncs.h"
+
+#include "fu-rts54xx-device.h"
+
+void
+fu_plugin_init (FuPlugin *plugin)
+{
+	fu_plugin_add_rule (plugin, FU_PLUGIN_RULE_REQUIRES_QUIRK, FU_QUIRKS_PLUGIN);
+}
+
+gboolean
+fu_plugin_update (FuPlugin *plugin,
+		  FuDevice *device,
+		  GBytes *blob_fw,
+		  FwupdInstallFlags flags,
+		  GError **error)
+{
+	g_autoptr(FuDeviceLocker) locker = NULL;
+
+	/* check */
+	if (g_bytes_get_size (blob_fw) % 0x10000 != 0) {
+		g_set_error (error,
+			     FWUPD_ERROR,
+			     FWUPD_ERROR_INVALID_FILE,
+			     "File not expected size, expected multiple of 0x%04x",
+			     (guint) 0x10000);
+		return FALSE;
+	}
+
+	/* write */
+	locker = fu_device_locker_new (device, error);
+	if (locker == NULL)
+		return FALSE;
+	return fu_device_write_firmware (device, blob_fw, error);
+}
+
+gboolean
+fu_plugin_usb_device_added (FuPlugin *plugin, GUsbDevice *usb_device, GError **error)
+{
+	g_autoptr(FuDeviceLocker) locker = NULL;
+	g_autoptr(FuRts54xxDevice) device = NULL;
+
+	/* open the device */
+	device = fu_rts54xx_device_new (usb_device);
+	fu_device_set_quirks (FU_DEVICE (device), fu_plugin_get_quirks (plugin));
+	locker = fu_device_locker_new (device, error);
+	if (locker == NULL)
+		return FALSE;
+
+	/* insert to hash */
+	fu_plugin_device_add (plugin, FU_DEVICE (device));
+	return TRUE;
+}

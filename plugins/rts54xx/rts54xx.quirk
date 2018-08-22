@@ -1,0 +1,3 @@
+# RTS5423
+[DeviceInstanceId=USB\VID_0BDA&PID_1100]
+Plugin = rts54xx

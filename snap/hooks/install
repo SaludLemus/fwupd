@@ -1,0 +1,4 @@
+#!/bin/sh -e
+
+#install policykit rules and actions
+cp -R $SNAP/share/polkit-1/ /usr/share/

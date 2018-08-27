@@ -451,6 +451,19 @@ fu_device_add_parent_guid (FuDevice *device, const gchar *guid)
 }
 
 static void
+fu_device_add_child_by_guid (FuDevice *device, const gchar *guid)
+{
+	FuDevicePrivate *priv = GET_PRIVATE (device);
+	g_autoptr(FuDevice) child = g_object_new (G_OBJECT_TYPE (device), NULL);
+	fu_device_set_quirks (child, priv->quirks);
+	if (fu_device_get_platform_id (device) != NULL)
+		fu_device_set_platform_id (child, fu_device_get_platform_id (device));
+	fu_device_add_flag (child, fu_device_get_flags (device));
+	fu_device_add_guid (child, guid);
+	fu_device_add_child (device, child);
+}
+
+static void
 fu_device_add_guid_quirks (FuDevice *device, const gchar *guid)
 {
 	FuDevicePrivate *priv = GET_PRIVATE (device);
@@ -499,6 +512,14 @@ fu_device_add_guid_quirks (FuDevice *device, const gchar *guid)
 	tmp = fu_quirks_lookup_by_guid (priv->quirks, guid, FU_QUIRKS_PARENT_GUID);
 	if (tmp != NULL)
 		fu_device_add_parent_guid (device, tmp);
+
+	/* children */
+	tmp = fu_quirks_lookup_by_guid (priv->quirks, guid, FU_QUIRKS_CHILDREN);
+	if (tmp != NULL) {
+		g_auto(GStrv) guids = g_strsplit (tmp, ",", -1);
+		for (guint i = 0; guids[i] != NULL; i++)
+			fu_device_add_child_by_guid (device, guids[i]);
+	}
 }
 
 static void

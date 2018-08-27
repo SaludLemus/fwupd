@@ -41,6 +41,8 @@ typedef struct {
 	guint				 order;
 	guint				 priority;
 	gboolean			 done_probe;
+	guint64				 size_min;
+	guint64				 size_max;
 } FuDevicePrivate;
 
 enum {
@@ -513,6 +515,14 @@ fu_device_add_guid_quirks (FuDevice *device, const gchar *guid)
 	if (tmp != NULL)
 		fu_device_add_parent_guid (device, tmp);
 
+	/* firmware size */
+	tmp = fu_quirks_lookup_by_guid (priv->quirks, guid, FU_QUIRKS_FIRMWARE_SIZE_MIN);
+	if (tmp != NULL)
+		fu_device_set_firmware_size_min (device, fu_common_strtoull (tmp));
+	tmp = fu_quirks_lookup_by_guid (priv->quirks, guid, FU_QUIRKS_FIRMWARE_SIZE_MAX);
+	if (tmp != NULL)
+		fu_device_set_firmware_size_max (device, fu_common_strtoull (tmp));
+
 	/* children */
 	tmp = fu_quirks_lookup_by_guid (priv->quirks, guid, FU_QUIRKS_CHILDREN);
 	if (tmp != NULL) {
@@ -520,6 +530,40 @@ fu_device_add_guid_quirks (FuDevice *device, const gchar *guid)
 		for (guint i = 0; guids[i] != NULL; i++)
 			fu_device_add_child_by_guid (device, guids[i]);
 	}
+}
+
+/**
+ * fu_device_set_firmware_size_min:
+ * @device: A #FuDevice
+ * @size_min: Size in bytes
+ *
+ * Sets the minimum allowed size of the firmware blob.
+ *
+ * Since: 1.1.2
+ **/
+void
+fu_device_set_firmware_size_min (FuDevice *device, guint64 size_min)
+{
+	FuDevicePrivate *priv = GET_PRIVATE (device);
+	g_return_if_fail (FU_IS_DEVICE (device));
+	priv->size_min = size_min;
+}
+
+/**
+ * fu_device_set_firmware_size_max:
+ * @device: A #FuDevice
+ * @size_min: Size in bytes
+ *
+ * Sets the maximum allowed size of the firmware blob.
+ *
+ * Since: 1.1.2
+ **/
+void
+fu_device_set_firmware_size_max (FuDevice *device, guint64 size_max)
+{
+	FuDevicePrivate *priv = GET_PRIVATE (device);
+	g_return_if_fail (FU_IS_DEVICE (device));
+	priv->size_max = size_max;
 }
 
 static void
@@ -1128,6 +1172,14 @@ fu_device_to_string (FuDevice *device)
 		fwupd_pad_kv_str (str, "AlternateId", priv->alternate_id);
 	if (priv->equivalent_id != NULL)
 		fwupd_pad_kv_str (str, "EquivalentId", priv->equivalent_id);
+	if (priv->size_min > 0) {
+		g_autofree gchar *sz = g_strdup_printf ("%" G_GUINT64_FORMAT, priv->size_min);
+		fwupd_pad_kv_str (str, "FirmwareSizeMin", sz);
+	}
+	if (priv->size_max > 0) {
+		g_autofree gchar *sz = g_strdup_printf ("%" G_GUINT64_FORMAT, priv->size_max);
+		fwupd_pad_kv_str (str, "FirmwareSizeMax", sz);
+	}
 	keys = g_hash_table_get_keys (priv->metadata);
 	for (GList *l = keys; l != NULL; l = l->next) {
 		const gchar *key = l->data;
@@ -1232,6 +1284,62 @@ fu_device_write_firmware (FuDevice *device, GBytes *fw, GError **error)
 
 	/* call vfunc */
 	return klass->write_firmware (device, fw, error);
+}
+
+/**
+ * fu_device_check_firmware:
+ * @device: A #FuDevice
+ * @fw: A #GBytes
+ * @error: A #GError
+ *
+ * Checks firmware is suitable for the device by testing the size and
+ * optionally calling a device-specific vfunc.
+ *
+ * Returns: %TRUE on success
+ *
+ * Since: 1.1.2
+ **/
+gboolean
+fu_device_check_firmware (FuDevice *device, GBytes *fw, GError **error)
+{
+	FuDeviceClass *klass = FU_DEVICE_GET_CLASS (device);
+	FuDevicePrivate *priv = GET_PRIVATE (device);
+	guint64 fw_sz;
+
+	g_return_val_if_fail (FU_IS_DEVICE (device), FALSE);
+	g_return_val_if_fail (fw != NULL, FALSE);
+	g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+	/* check size */
+	fw_sz = (guint64) g_bytes_get_size (fw);
+	if (priv->size_max > 0 && fw_sz > priv->size_max) {
+		g_set_error (error,
+			     FWUPD_ERROR,
+			     FWUPD_ERROR_NOT_SUPPORTED,
+			     "firmware is %04x bytes larger than the allowed "
+			     "maximum size of %04x bytes",
+			     (guint) (fw_sz - priv->size_max),
+			     (guint) priv->size_max);
+		return FALSE;
+	}
+	if (priv->size_min > 0 && fw_sz < priv->size_min) {
+		g_set_error (error,
+			     FWUPD_ERROR,
+			     FWUPD_ERROR_NOT_SUPPORTED,
+			     "firmware is %04x bytes smaller than the allowed "
+			     "minimum size of %04x bytes",
+			     (guint) (priv->size_min - fw_sz),
+			     (guint) priv->size_max);
+		return FALSE;
+	}
+
+	/* subclassed */
+	if (klass->check_firmware != NULL) {
+		if (!klass->check_firmware (device, fw, error))
+			return FALSE;
+	}
+
+	return TRUE;
 }
 
 /**

@@ -396,6 +396,10 @@ fu_ebitdo_device_write_firmware (FuDevice *device, GBytes *fw, GError **error)
 		return FALSE;
 	}
 
+	/* check size */
+	if (!fu_device_check_firmware (device, fw, error))
+		return FALSE;
+
 	/* corrupt */
 	if (g_bytes_get_size (fw) < sizeof (FuEbitdoFirmwareHeader)) {
 		g_set_error_literal (error,

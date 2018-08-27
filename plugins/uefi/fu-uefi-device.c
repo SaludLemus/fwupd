@@ -308,6 +308,10 @@ fu_uefi_device_write_firmware (FuDevice *device, GBytes *fw, GError **error)
 		return FALSE;
 	}
 
+	/* check size */
+	if (!fu_device_check_firmware (device, fw, error))
+		return FALSE;
+
 	/* save the blob to the ESP */
 	directory = fu_uefi_get_esp_path_for_os (esp_path);
 	basename = g_strdup_printf ("fwupd-%s.cap", self->fw_class);

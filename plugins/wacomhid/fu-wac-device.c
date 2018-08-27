@@ -533,6 +533,10 @@ fu_wac_device_write_firmware (FuDevice *device, GBytes *blob, GError **error)
 	g_debug ("using element at addr 0x%0x",
 		 (guint) dfu_element_get_address (element));
 
+	/* check size */
+	if (!fu_device_check_firmware (device, dfu_element_get_contents (element), error))
+		return FALSE;
+
 	/* get firmware parameters (page sz and transfer sz) */
 	if (!fu_wac_device_ensure_parameters (self, error))
 		return FALSE;

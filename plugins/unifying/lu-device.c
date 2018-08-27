@@ -899,14 +899,9 @@ lu_device_write_firmware (FuDevice *device, GBytes *fw, GError **error)
 	g_return_val_if_fail (LU_IS_DEVICE (device), FALSE);
 	g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
-	/* corrupt */
-	if (g_bytes_get_size (fw) < 0x4000) {
-		g_set_error_literal (error,
-				     G_IO_ERROR,
-				     G_IO_ERROR_INVALID_DATA,
-				     "firmware is too small");
+	/* check size */
+	if (!fu_device_check_firmware (device, fw, error))
 		return FALSE;
-	}
 
 	/* call device-specific method */
 	if (klass->write_firmware == NULL) {

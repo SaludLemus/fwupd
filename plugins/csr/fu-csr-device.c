@@ -479,6 +479,10 @@ fu_csr_device_download (FuDevice *device, GBytes *blob, GError **error)
 		return FALSE;
 	}
 
+	/* check size */
+	if (!fu_device_check_firmware (device, blob_noftr, error))
+		return FALSE;
+
 	/* create chunks */
 	data = g_bytes_get_data (blob_noftr, &sz);
 	chunks = fu_chunk_array_new (data, (guint32) sz, 0x0, 0x0,

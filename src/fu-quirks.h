@@ -143,7 +143,7 @@ gchar		*fu_quirks_lookup_by_guids		(FuQuirks	*self,
 
 /**
  * FU_QUIRKS_CHILDREN:
- * @key: the USB device ID, e.g. `USB\VID_0763&PID_2806`
+ * @key: the USB device ID, e.g. `DeviceInstanceId=USB\VID_0763&PID_2806`
  * @value: the GUID, e.g. `USB\VID_0763&PID_2806&I2C_01`
  *
  * Adds one or more virtual devices to a physical device, delimited by comma.

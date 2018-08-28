@@ -30,7 +30,7 @@ gchar		*fu_quirks_lookup_by_guids		(FuQuirks	*self,
 
 /**
  * FU_QUIRKS_PLUGIN:
- * @key: the USB device ID, e.g. `USB\VID_0763&PID_2806`
+ * @key: the USB device ID, e.g. `DeviceInstanceId=USB\VID_0763&PID_2806`
  * @value: the plugin name, e.g. `csr`
  *
  * Sets the plugin to use for a specific hardware device.
@@ -71,7 +71,7 @@ gchar		*fu_quirks_lookup_by_guids		(FuQuirks	*self,
 
 /**
  * FU_QUIRKS_FLAGS:
- * @key: the USB device ID, e.g. `USB\VID_0763&PID_2806`
+ * @key: the USB device ID, e.g. `DeviceInstanceId=USB\VID_0763&PID_2806`
  * @value: the quirk, e.g. `is-bootloader`
  *
  * Assigns optional quirks to use for a 8Bitdo device. The list of supported
@@ -86,7 +86,7 @@ gchar		*fu_quirks_lookup_by_guids		(FuQuirks	*self,
 
 /**
  * FU_QUIRKS_SUMMARY:
- * @key: the USB device ID, e.g. `USB\VID_0763&PID_2806`
+ * @key: the USB device ID, e.g. `DeviceInstanceId=USB\VID_0763&PID_2806`
  * @value: the USB device summary, e.g. `An open source display colorimeter`
  *
  * Sets a name for a specific hardware device.
@@ -97,7 +97,7 @@ gchar		*fu_quirks_lookup_by_guids		(FuQuirks	*self,
 
 /**
  * FU_QUIRKS_ICON:
- * @key: the USB device ID, e.g. `USB\VID_0763&PID_2806`
+ * @key: the USB device ID, e.g. `DeviceInstanceId=USB\VID_0763&PID_2806`
  * @value: the USB device icon name, e.g. `media-removable`
  *
  * Adds an icon name for a specific hardware device.
@@ -108,7 +108,7 @@ gchar		*fu_quirks_lookup_by_guids		(FuQuirks	*self,
 
 /**
  * FU_QUIRKS_NAME:
- * @key: the USB device ID, e.g. `USB\VID_0763&PID_2806`
+ * @key: the USB device ID, e.g. `DeviceInstanceId=USB\VID_0763&PID_2806`
  * @value: the USB device name, e.g. `ColorHug`
  *
  * Sets a name for a specific hardware device.
@@ -119,7 +119,7 @@ gchar		*fu_quirks_lookup_by_guids		(FuQuirks	*self,
 
 /**
  * FU_QUIRKS_GUID:
- * @key: the USB device ID, e.g. `USB\VID_0763&PID_2806`
+ * @key: the USB device ID, e.g. `DeviceInstanceId=USB\VID_0763&PID_2806`
  * @value: the GUID, e.g. `537f7800-8529-5656-b2fa-b0901fe91696`
  *
  * Adds an extra GUID for a specific hardware device. If the value provided is
@@ -157,7 +157,7 @@ gchar		*fu_quirks_lookup_by_guids		(FuQuirks	*self,
 
 /**
  * FU_QUIRKS_VERSION:
- * @key: the USB device ID, e.g. `USB\VID_0763&PID_2806&REV_0001`
+ * @key: the USB device ID, e.g. `DeviceInstanceId=USB\VID_0763&PID_2806&REV_0001`
  * @value: the version number, e.g. `1.2`
  *
  * Sets a version for a specific hardware device.
@@ -168,7 +168,7 @@ gchar		*fu_quirks_lookup_by_guids		(FuQuirks	*self,
 
 /**
  * FU_QUIRKS_VENDOR:
- * @key: the USB device ID, e.g. `USB\VID_0763&PID_2806`
+ * @key: the USB device ID, e.g. `DeviceInstanceId=USB\VID_0763&PID_2806`
  * @value: the vendor, e.g. `Hughski Limited`
  *
  * Sets a vendor name for a specific hardware device.

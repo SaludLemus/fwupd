@@ -179,7 +179,7 @@ gchar		*fu_quirks_lookup_by_guids		(FuQuirks	*self,
 
 /**
  * FU_QUIRKS_FIRMWARE_SIZE_MIN:
- * @key: the USB device ID, e.g. `USB\VID_0763&PID_2806`
+ * @key: the USB device ID, e.g. `DeviceInstanceId=USB\VID_0763&PID_2806`
  * @value: the vendor, e.g. `0x10000`
  *
  * Sets the minimum allowed firmware size.
@@ -190,7 +190,7 @@ gchar		*fu_quirks_lookup_by_guids		(FuQuirks	*self,
 
 /**
  * FU_QUIRKS_FIRMWARE_SIZE_MAX:
- * @key: the USB device ID, e.g. `USB\VID_0763&PID_2806`
+ * @key: the USB device ID, e.g. `DeviceInstanceId=USB\VID_0763&PID_2806`
  * @value: the vendor, e.g. `0x10000`
  *
  * Sets the maximum allowed firmware size.

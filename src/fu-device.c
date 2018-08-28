@@ -1315,7 +1315,7 @@ fu_device_check_firmware (FuDevice *device, GBytes *fw, GError **error)
 	if (priv->size_max > 0 && fw_sz > priv->size_max) {
 		g_set_error (error,
 			     FWUPD_ERROR,
-			     FWUPD_ERROR_NOT_SUPPORTED,
+			     FWUPD_ERROR_INVALID_FILE,
 			     "firmware is %04x bytes larger than the allowed "
 			     "maximum size of %04x bytes",
 			     (guint) (fw_sz - priv->size_max),
@@ -1325,7 +1325,7 @@ fu_device_check_firmware (FuDevice *device, GBytes *fw, GError **error)
 	if (priv->size_min > 0 && fw_sz < priv->size_min) {
 		g_set_error (error,
 			     FWUPD_ERROR,
-			     FWUPD_ERROR_NOT_SUPPORTED,
+			     FWUPD_ERROR_INVALID_FILE,
 			     "firmware is %04x bytes smaller than the allowed "
 			     "minimum size of %04x bytes",
 			     (guint) (priv->size_min - fw_sz),

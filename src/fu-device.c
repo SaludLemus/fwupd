@@ -1269,6 +1269,7 @@ gboolean
 fu_device_write_firmware (FuDevice *device, GBytes *fw, GError **error)
 {
 	FuDeviceClass *klass = FU_DEVICE_GET_CLASS (device);
+	g_autoptr(GBytes) fw_new = NULL;
 
 	g_return_val_if_fail (FU_IS_DEVICE (device), FALSE);
 	g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
@@ -1282,36 +1283,56 @@ fu_device_write_firmware (FuDevice *device, GBytes *fw, GError **error)
 		return FALSE;
 	}
 
+	/* prepare (e.g. decompress) firmware */
+	fw_new = fu_device_prepare_firmware (device, fw, error);
+	if (fw_new == NULL)
+		return FALSE;
+
 	/* call vfunc */
-	return klass->write_firmware (device, fw, error);
+	return klass->write_firmware (device, fw_new, error);
 }
 
 /**
- * fu_device_check_firmware:
+ * fu_device_prepare_firmware:
  * @device: A #FuDevice
  * @fw: A #GBytes
  * @error: A #GError
  *
- * Checks firmware is suitable for the device by testing the size and
- * optionally calling a device-specific vfunc.
+ * Prepares the firmware by calling an optional device-specific vfunc for the
+ * device, which can do things like decompressing or parsing of the firmware
+ * data.
  *
- * Returns: %TRUE on success
+ * For all firmware, this checks the size of the firmware if limits have been
+ * set using fu_device_set_firmware_size_min(), fu_device_set_firmware_size_max()
+ * or using a quirk entry.
+ *
+ * Returns: (return full): A new #GBytes, or %NULL for error
  *
  * Since: 1.1.2
  **/
-gboolean
-fu_device_check_firmware (FuDevice *device, GBytes *fw, GError **error)
+GBytes *
+fu_device_prepare_firmware (FuDevice *device, GBytes *fw, GError **error)
 {
 	FuDeviceClass *klass = FU_DEVICE_GET_CLASS (device);
 	FuDevicePrivate *priv = GET_PRIVATE (device);
 	guint64 fw_sz;
+	g_autoptr(GBytes) fw_new = NULL;
 
 	g_return_val_if_fail (FU_IS_DEVICE (device), FALSE);
 	g_return_val_if_fail (fw != NULL, FALSE);
 	g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
+	/* optionally subclassed */
+	if (klass->prepare_firmware != NULL) {
+		fw_new = klass->prepare_firmware (device, fw, error);
+		if (fw_new == NULL)
+			return FALSE;
+	} else {
+		fw_new = g_bytes_ref (fw);
+	}
+
 	/* check size */
-	fw_sz = (guint64) g_bytes_get_size (fw);
+	fw_sz = (guint64) g_bytes_get_size (fw_new);
 	if (priv->size_max > 0 && fw_sz > priv->size_max) {
 		g_set_error (error,
 			     FWUPD_ERROR,
@@ -1333,13 +1354,7 @@ fu_device_check_firmware (FuDevice *device, GBytes *fw, GError **error)
 		return FALSE;
 	}
 
-	/* subclassed */
-	if (klass->check_firmware != NULL) {
-		if (!klass->check_firmware (device, fw, error))
-			return FALSE;
-	}
-
-	return TRUE;
+	return g_steal_pointer (&fw_new);
 }
 
 /**

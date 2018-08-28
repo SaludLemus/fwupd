@@ -899,10 +899,6 @@ lu_device_write_firmware (FuDevice *device, GBytes *fw, GError **error)
 	g_return_val_if_fail (LU_IS_DEVICE (device), FALSE);
 	g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
-	/* check size */
-	if (!fu_device_check_firmware (device, fw, error))
-		return FALSE;
-
 	/* call device-specific method */
 	if (klass->write_firmware == NULL) {
 		g_set_error (error,

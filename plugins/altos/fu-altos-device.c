@@ -407,10 +407,6 @@ fu_altos_device_write_firmware (FuDevice *device, GBytes *fw, GError **error)
 	g_autoptr(FuDeviceLocker) locker  = NULL;
 	g_autoptr(GString) buf = g_string_new (NULL);
 
-	/* check size */
-	if (!fu_device_check_firmware (device, fw, error))
-		return FALSE;
-
 	/* check kind */
 	if (self->kind != FU_ALTOS_DEVICE_KIND_BOOTLOADER) {
 		g_set_error_literal (error,

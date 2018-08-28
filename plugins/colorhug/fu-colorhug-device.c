@@ -322,10 +322,6 @@ fu_colorhug_device_write_firmware (FuDevice *device, GBytes *fw, GError **error)
 	FuColorhugDevice *self = FU_COLORHUG_DEVICE (device);
 	g_autoptr(GPtrArray) chunks = NULL;
 
-	/* check size */
-	if (!fu_device_check_firmware (device, fw, error))
-		return FALSE;
-
 	/* build packets */
 	chunks = fu_chunk_array_new_from_bytes (fw,
 						self->start_addr,

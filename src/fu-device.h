@@ -37,7 +37,7 @@ struct _FuDeviceClass
 							 GError		**error);
 	gboolean		 (*probe)		(FuDevice	*device,
 							 GError		**error);
-	gboolean		 (*check_firmware)	(FuDevice	*device,
+	GBytes			*(*prepare_firmware)	(FuDevice	*device,
 							 GBytes		*fw,
 							 GError		**error);
 	/*< private >*/
@@ -177,7 +177,7 @@ FwupdRelease	*fu_device_get_release_default		(FuDevice	*device);
 gboolean	 fu_device_write_firmware		(FuDevice	*device,
 							 GBytes		*fw,
 							 GError		**error);
-gboolean	 fu_device_check_firmware		(FuDevice	*device,
+GBytes		*fu_device_prepare_firmware		(FuDevice	*device,
 							 GBytes		*fw,
 							 GError		**error);
 GBytes		*fu_device_read_firmware		(FuDevice	*device,

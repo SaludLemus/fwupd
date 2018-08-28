@@ -352,7 +352,6 @@ dfu_device_guess_state_from_iface (DfuDevice *device, GUsbInterface *iface)
 static gchar *
 dfu_device_lookup_quirk_by_device (DfuDevice *device, const gchar *key)
 {
-	g_autoptr(GString) quirkstr = g_string_new (NULL);
 	GPtrArray *guids = fu_device_get_guids (FU_DEVICE (device));
 	FuQuirks *system_quirks = fu_device_get_quirks (FU_DEVICE (device));
 	return fu_quirks_lookup_by_guids (system_quirks, guids, key);
